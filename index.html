@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7f5">
+    <meta name="description" content="按 80x 目标杠杆和 1% 止损风险上限估算 Binance USDT 本位合约投入保证金。">
+    <title>止损风险计算器</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./src/app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <span class="product-mark" aria-hidden="true">R</span>
+        <span class="product-name">风险计算</span>
+        <span class="market-label">BINANCE · USDⓈ-M</span>
+      </header>
+
+      <main>
+        <div class="page-title">
+          <p class="eyebrow">POSITION SIZING</p>
+          <h1>止损风险计算器</h1>
+        </div>
+
+        <div class="calculator-layout">
+          <section class="inputs-section" aria-labelledby="inputs-title">
+            <div class="section-heading">
+              <h2 id="inputs-title">交易参数</h2>
+              <span>USDT 本位</span>
+            </div>
+
+            <form id="calculator-form" autocomplete="off" novalidate>
+              <label class="field" for="capital">
+                <span class="field-label">本金</span>
+                <span class="input-wrap">
+                  <input id="capital" name="capital" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 1000" aria-describedby="capital-unit">
+                  <span id="capital-unit" class="input-unit">USDT</span>
+                </span>
+              </label>
+
+              <label class="field" for="entry-price">
+                <span class="field-label">开仓价</span>
+                <span class="input-wrap">
+                  <input id="entry-price" name="entry-price" type="number" min="0" step="any" inputmode="decimal" placeholder="输入开仓价格" aria-describedby="entry-unit">
+                  <span id="entry-unit" class="input-unit">USDT</span>
+                </span>
+              </label>
+
+              <label class="field" for="stop-price">
+                <span class="field-label">止损价</span>
+                <span class="input-wrap">
+                  <input id="stop-price" name="stop-price" type="number" min="0" step="any" inputmode="decimal" placeholder="输入止损价格" aria-describedby="stop-unit">
+                  <span id="stop-unit" class="input-unit">USDT</span>
+                </span>
+              </label>
+              <p id="form-message" class="form-message" role="status" aria-live="polite">填写三项参数后显示计算结果。</p>
+            </form>
+          </section>
+
+          <section class="results-section" aria-labelledby="results-title" aria-live="polite" aria-atomic="true">
+            <div class="section-heading results-heading">
+              <h2 id="results-title">计算结果</h2>
+              <span class="risk-limit">风险上限 <strong>1%</strong></span>
+            </div>
+
+            <div class="primary-result">
+              <div>
+                <p class="result-label">投入保证金</p>
+                <p id="margin-result" class="margin-value">— <span>USDT</span></p>
+              </div>
+              <div class="leverage-result">
+                <p class="result-label">杠杆倍数</p>
+                <p id="leverage-result" class="leverage-value">—</p>
+              </div>
+            </div>
+
+            <div class="risk-usage">
+              <div class="risk-usage-label">
+                <span>预计亏损 / 本金</span>
+                <strong id="risk-result">—</strong>
+              </div>
+              <div class="risk-track" role="progressbar" aria-label="1% 风险预算使用率" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+                <span id="risk-bar" class="risk-bar"></span>
+              </div>
+            </div>
+
+            <dl class="detail-list">
+              <div class="detail-row">
+                <dt>仓位名义价值</dt>
+                <dd id="notional-result">—</dd>
+              </div>
+              <div class="detail-row">
+                <dt>止损预计亏损</dt>
+                <dd id="loss-result">—</dd>
+              </div>
+              <div class="detail-row">
+                <dt>理论合约数量</dt>
+                <dd id="quantity-result">—</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <aside class="assumptions" aria-label="计算假设">
+          <span class="assumption-indicator" aria-hidden="true"></span>
+          <p>按 Binance USDⓈ-M 普通账户吃单费率估算，开仓和平仓各按 0.05% 计入。假设止损按输入价格成交；未计滑点与资金费率。下单数量需按交易对步进向下取整。</p>
+        </aside>
+      </main>
+
+      <footer class="site-footer">计算结果为仓位估算，金额按 USDT 分精度向下取整。</footer>
+    </div>
+  </body>
+</html>
