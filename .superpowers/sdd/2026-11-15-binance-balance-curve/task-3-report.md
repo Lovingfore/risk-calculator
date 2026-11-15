@@ -15,6 +15,13 @@ The browser reads only the fixed `history.jsonl` and `latest.json` URLs from the
 - Static review confirmed there are no storage APIs or endpoints beyond the two fixed encrypted files.
 - A desktop/mobile browser screenshot check could not be performed because the computer-use environment reported no available browser surface.
 
+## Review Follow-up
+
+- Latest JSON requests now include a `?t=<timestamp>` cache-busting query on both unlock and 30-second polling reads.
+- A polling 404 preserves the displayed sample and reports stale when it is older than 15 minutes; otherwise it reports that the latest value is temporarily unavailable and will retry.
+- Password handling is scoped to `deriveKeyFromInput()`: the input is cleared immediately, the local string reference is cleared after key derivation, and only the derived key is returned before history loading starts.
+- Reverification: `node --check src/balance-app.js` passed, `node --test` passed (28 tests, 0 failures), and `git diff --check` passed.
+
 ## Files
 
 - `index.html`

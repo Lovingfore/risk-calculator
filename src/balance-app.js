@@ -58,8 +58,9 @@ function checkStale() {
   else setStatus(`余额历史已解锁 · 最近更新 ${Math.max(0, Math.floor(age / 60_000))} 分钟前`);
 }
 
-async function readJson(url) {
-  const response = await fetch(url, { cache: 'no-store' });
+async function readJson(url, cacheBust = false) {
+  const requestUrl = cacheBust ? `${url}?t=${Date.now()}` : url;
+  const response = await fetch(requestUrl, { cache: 'no-store' });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error('远端加密记录暂时无法读取。');
   return response.json();
@@ -72,7 +73,7 @@ async function loadHistory(derivedKey) {
       if (!response.ok) throw new Error('远端加密记录暂时无法读取。');
       return response.text();
     }),
-    readJson(LATEST_URL),
+    readJson(LATEST_URL, true),
   ]);
   if (text === null && latestRecord === null) return { configured: false, samples: [] };
   if (text === null || latestRecord === null) throw new Error('余额历史文件不完整，暂时无法加载。');
@@ -93,8 +94,15 @@ async function loadHistory(derivedKey) {
 async function refreshLatest() {
   if (!key) return;
   try {
-    const record = await readJson(LATEST_URL);
-    if (!record) { setStatus('余额历史尚未配置，等待加密记录发布。', 'warning'); return; }
+    const record = await readJson(LATEST_URL, true);
+    if (!record) {
+      if (latestTimestamp && Date.now() - Date.parse(latestTimestamp) > STALE_MS) {
+        setStatus('最新采样已超过 15 分钟，数据可能已过期。', 'warning');
+      } else {
+        setStatus('最新余额暂时不可用，将在下一轮重试。', 'error');
+      }
+      return;
+    }
     const latest = await decryptSample(record, key);
     const index = samples.findIndex(sample => sample.timestamp === latest.timestamp);
     if (index < 0) samples.push(latest); else samples[index] = latest;
@@ -109,18 +117,26 @@ async function refreshLatest() {
   }
 }
 
+async function deriveKeyFromInput() {
+  let password = passwordInput.value;
+  passwordInput.value = '';
+  try {
+    return await deriveHistoryKey(password);
+  } finally {
+    password = '';
+  }
+}
+
 form?.addEventListener('submit', async event => {
   event.preventDefault();
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = null;
   key = null;
   samples = [];
-  const password = passwordInput.value;
-  passwordInput.value = '';
   setStatus('正在解锁并读取加密历史…');
   form.querySelector('button').disabled = true;
   try {
-    const derivedKey = await deriveHistoryKey(password);
+    const derivedKey = await deriveKeyFromInput();
     const result = await loadHistory(derivedKey);
     if (!result.configured) {
       key = null; samples = []; summary.hidden = true; draw();
