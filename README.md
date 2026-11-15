@@ -10,7 +10,7 @@
 
 页面下方可查看 USDⓈ-M 合约账户的 USDT 钱包余额历史。只读取钱包余额，不读取现货、未实现盈亏、仓位或订单。余额由 GitHub Actions 尝试每 5 分钟采集一次；GitHub 调度可能延迟或漏跑，这不是实时或准点监控服务。
 
-要启用采集，请在 Binance 创建只读 API Key，并确保它没有交易和提现权限。GitHub 托管 Runner 没有固定出口 IP；如果 Binance 要求固定 IP 白名单，这种 GitHub 托管方案无法稳定连接。
+要启用采集，请在 Binance 创建 API Key，只开启 `Enable Reading`（读取）权限；本项目请求的 USDⓈ-M 余额接口属于 `USER_DATA` 查询，不需要下单交易权限。不要开启现货/杠杆交易、合约交易或提现权限。若 Binance 当前的密钥设置无法在不授予交易能力的情况下读取合约余额，请不要为此打开交易权限。GitHub 托管 Runner 没有固定出口 IP；如果 Binance 要求固定 IP 白名单，这种 GitHub 托管方案无法稳定连接。
 
 在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加以下三个 Repository secrets：
 
