@@ -6,6 +6,30 @@
 
 所有计算在浏览器本地完成，输入不会被保存或发送。GitHub Pages 地址：[https://lovingfore.github.io/risk-calculator/](https://lovingfore.github.io/risk-calculator/)
 
+## Binance 合约钱包余额曲线
+
+页面下方可查看 USDⓈ-M 合约账户的 USDT 钱包余额历史。只读取钱包余额，不读取现货、未实现盈亏、仓位或订单。余额由 GitHub Actions 尝试每 5 分钟采集一次；GitHub 调度可能延迟或漏跑，这不是实时或准点监控服务。
+
+要启用采集，请在 Binance 创建只读 API Key，并确保它没有交易和提现权限。GitHub 托管 Runner 没有固定出口 IP；如果 Binance 要求固定 IP 白名单，这种 GitHub 托管方案无法稳定连接。
+
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加以下三个 Repository secrets：
+
+- `BINANCE_API_KEY`：Binance API Key。
+- `BINANCE_API_SECRET`：对应的 API Secret。
+- `BALANCE_HISTORY_PASSWORD`：用于加密历史数据的随机密码，至少 32 个字符。
+
+可在自己的电脑上生成高强度密码：
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(36).toString('base64url'))"
+```
+
+把生成结果分别保存为 `BALANCE_HISTORY_PASSWORD` Secret，并在网页中输入以解锁。不要把密码、API Key 或 API Secret 发到聊天、提交到仓库或写入页面代码。网页不会保存密码；刷新页面后需要重新输入。
+
+配置 Secrets 后，可在 **Actions → Collect Binance wallet balance → Run workflow** 手动启动第一次采集。采集成功后会创建 `balance-history` 分支。分支里的余额记录经过 AES-GCM 加密，但仓库是公开的，密文和采样时间仍可被查看；Git 历史可能保留先前版本，因此更改密码不能擦除旧密文。请保护默认分支，只允许信任的维护者修改可读取 Actions Secrets 的工作流。
+
+采集功能依赖 GitHub Actions 与 GitHub Pages 的免费额度和服务策略，GitHub 不保证永久免费、每次准点运行或数据永不丢失。没有配置 Secrets 或尚无成功采样时，页面会明确显示余额历史未配置，不会显示虚构余额。
+
 ## 本地测试
 
 需要 Node.js 20 或更高版本：

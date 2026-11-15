@@ -1,0 +1,99 @@
+name: Collect Binance wallet balance
+
+on:
+  schedule:
+    - cron: '3-59/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: binance-balance-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v4
+
+      - name: Check required secrets
+        id: secrets-check
+        env:
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+          BALANCE_HISTORY_PASSWORD: ${{ secrets.BALANCE_HISTORY_PASSWORD }}
+        shell: bash
+        run: |
+          missing=0
+          for name in BINANCE_API_KEY BINANCE_API_SECRET BALANCE_HISTORY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::notice title=余额采集未配置::请先在仓库 Actions Secrets 中设置 ${name}。"
+              missing=1
+            fi
+          done
+          if [[ "$missing" -eq 0 ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare encrypted data directory
+        if: steps.secrets-check.outputs.ready == 'true'
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/risk-calculator-balance"
+
+      - name: Read existing encrypted history
+        if: steps.secrets-check.outputs.ready == 'true'
+        id: history-branch
+        shell: bash
+        run: |
+          set +e
+          git ls-remote --exit-code --heads origin refs/heads/balance-history >/dev/null
+          result=$?
+          set -e
+          if [[ "$result" -eq 0 ]]; then
+            git fetch --depth=1 origin refs/heads/balance-history
+            git show FETCH_HEAD:history.jsonl > "$RUNNER_TEMP/risk-calculator-balance/history.jsonl"
+            git show FETCH_HEAD:latest.json > "$RUNNER_TEMP/risk-calculator-balance/latest.json"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$result" -eq 2 ]]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::无法检查余额历史分支。"
+            exit "$result"
+          fi
+
+      - name: Collect and encrypt the USDT wallet balance
+        if: steps.secrets-check.outputs.ready == 'true'
+        working-directory: ${{ runner.temp }}/risk-calculator-balance
+        env:
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+          BALANCE_HISTORY_PASSWORD: ${{ secrets.BALANCE_HISTORY_PASSWORD }}
+        run: node "$GITHUB_WORKSPACE/scripts/collect-balance.js"
+
+      - name: Publish encrypted history
+        if: steps.secrets-check.outputs.ready == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ steps.history-branch.outputs.exists }}" == "true" ]]; then
+            git switch --force-create balance-history FETCH_HEAD
+          else
+            git switch --orphan balance-history
+            git rm -rf --ignore-unmatch .
+          fi
+          cp "$RUNNER_TEMP/risk-calculator-balance/history.jsonl" history.jsonl
+          cp "$RUNNER_TEMP/risk-calculator-balance/latest.json" latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- history.jsonl latest.json
+          if git diff --cached --quiet; then
+            echo "加密余额记录没有变化。"
+          else
+            git commit -m "Update encrypted balance history"
+            git push origin HEAD:balance-history
+          fi
