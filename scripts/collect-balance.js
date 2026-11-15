@@ -101,22 +101,40 @@ export async function collectBalance({ env, historyDirectory, fetchImpl = global
   if (typeof historyDirectory !== 'string' || historyDirectory.length === 0) throw new Error('A history directory is required');
   if (!Number.isFinite(now) || !Number.isFinite(new Date(now).getTime())) throw new Error('Invalid collection timestamp');
 
+  let phase = 'key derivation';
+  let safeHttpDetail = '';
   try {
     const key = await deriveHistoryKey(password);
+    phase = 'request signing';
     const request = buildSignedBalanceRequest({ apiKey, apiSecret, timestamp: now });
+    phase = 'Binance request';
     const response = await fetchImpl(request.url, { method: 'GET', headers: request.headers });
-    if (!response?.ok) throw new Error('Binance request failed');
+    if (!response?.ok) {
+      let code = null;
+      try {
+        const payload = await response.json();
+        if (Number.isSafeInteger(payload?.code)) code = payload.code;
+      } catch {}
+      const status = Number.isInteger(response?.status) ? response.status : 'unknown';
+      safeHttpDetail = `HTTP ${status}${code === null ? '' : `, Binance code ${code}`}`;
+      throw new Error('Binance request failed');
+    }
+    phase = 'USDT response parsing';
     const balance = parseUsdMBalance(await response.json());
     const sample = { timestamp: new Date(now).toISOString(), balance, resolution: 'raw' };
     const historyPath = resolve(historyDirectory, 'history.jsonl');
+    phase = 'history decryption';
     const existing = await readHistory(historyPath, key);
     const existingRecords = new Map(existing.map(({ sample: item, record }) => [JSON.stringify(item), record]));
+    phase = 'history compaction';
     const compacted = compactHistory([...existing.map(({ sample: item }) => item), sample], now);
+    phase = 'history encryption';
     const [records, latest] = await Promise.all([
       Promise.all(compacted.map(item => existingRecords.get(JSON.stringify(item)) ?? encryptSample(item, key))),
       encryptSample(sample, key),
     ]);
     const historyText = records.map(record => JSON.stringify(record)).join('\n') + (records.length ? '\n' : '');
+    phase = 'encrypted file update';
     await mkdir(historyDirectory, { recursive: true });
     await replaceFiles(historyDirectory, [
       ['history.jsonl', historyText],
@@ -124,7 +142,7 @@ export async function collectBalance({ env, historyDirectory, fetchImpl = global
     ], fileOps);
     return sample;
   } catch {
-    throw new Error('Binance balance collection failed');
+    throw new Error(`Binance balance collection failed during ${phase}${safeHttpDetail ? ` (${safeHttpDetail})` : ''}`);
   }
 }
 

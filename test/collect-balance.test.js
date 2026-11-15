@@ -102,6 +102,28 @@ test('failed Binance responses preserve both existing files and expose no sensit
   }
 });
 
+test('reports only the Binance HTTP status and numeric error code', async t => {
+  const historyDirectory = await temporaryDirectory(t);
+  const responseText = `${API_KEY} ${API_SECRET} ${PASSWORD} 1234.56 signature=private`;
+  await assert.rejects(collectBalance({
+    env: ENV,
+    historyDirectory,
+    now: NOW,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ code: -2015, msg: responseText }),
+    }),
+  }), error => {
+    assert.equal(error.message, 'Binance balance collection failed during Binance request (HTTP 400, Binance code -2015)');
+    assert.doesNotMatch(error.message, new RegExp(API_KEY));
+    assert.doesNotMatch(error.message, new RegExp(API_SECRET));
+    assert.doesNotMatch(error.message, new RegExp(PASSWORD));
+    assert.doesNotMatch(error.message, /1234\.56|signature=private/);
+    return true;
+  });
+});
+
 test('refuses to replace encrypted files when existing history cannot be decrypted', async t => {
   const historyDirectory = await temporaryDirectory(t);
   const existingHistory = '{"version":1,"iv":"not-a-record","ciphertext":"bad"}\n';
@@ -149,7 +171,7 @@ test('keeps an unrecoverable history backup when backup restoration fails', asyn
     fileOps,
     fetchImpl: async () => ({ ok: true, json: async () => [{ asset: 'USDT', balance: '789.01' }] }),
   }), error => {
-    assert.equal(error.message, 'Binance balance collection failed');
+    assert.match(error.message, /^Binance balance collection failed during /);
     assert.doesNotMatch(error.message, new RegExp(API_SECRET));
     assert.doesNotMatch(error.message, new RegExp(PASSWORD));
     return true;
