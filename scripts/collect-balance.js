@@ -6,6 +6,7 @@ import { compactHistory, parseUsdMBalance } from '../src/balance-history.js';
 import { deriveHistoryKey, decryptSample, encryptSample } from '../src/history-crypto.js';
 
 const API_URL = 'https://fapi.binance.com/fapi/v3/balance';
+const defaultFileOps = { writeFile, rename, rm };
 
 export function buildSignedBalanceRequest({ apiKey, apiSecret, timestamp }) {
   if (typeof apiKey !== 'string' || apiKey.length === 0
@@ -53,18 +54,19 @@ async function readHistory(path, key) {
   return records;
 }
 
-async function replaceFiles(directory, files) {
+async function replaceFiles(directory, files, fileOps) {
   const id = randomUUID();
   const staged = files.map(([name]) => resolve(directory, `.${name}.${id}.tmp`));
   const backups = files.map(([name]) => resolve(directory, `.${name}.${id}.bak`));
   const destinations = files.map(([name]) => resolve(directory, name));
   const backedUp = [];
   const installed = [];
+  const preserveBackups = new Set();
   try {
-    await Promise.all(files.map(([, contents], index) => writeFile(staged[index], contents, { encoding: 'utf8', flag: 'wx' })));
+    await Promise.all(files.map(([, contents], index) => fileOps.writeFile(staged[index], contents, { encoding: 'utf8', flag: 'wx' })));
     for (let index = 0; index < files.length; index += 1) {
       try {
-        await rename(destinations[index], backups[index]);
+        await fileOps.rename(destinations[index], backups[index]);
         backedUp[index] = true;
       } catch (error) {
         if (error?.code !== 'ENOENT') throw error;
@@ -72,21 +74,28 @@ async function replaceFiles(directory, files) {
       }
     }
     for (let index = 0; index < files.length; index += 1) {
-      await rename(staged[index], destinations[index]);
+      await fileOps.rename(staged[index], destinations[index]);
       installed[index] = true;
     }
   } catch (error) {
     for (let index = 0; index < destinations.length; index += 1) {
-      if (installed[index]) await rm(destinations[index], { force: true }).catch(() => {});
-      if (backedUp[index]) await rename(backups[index], destinations[index]).catch(() => {});
+      if (installed[index]) await fileOps.rm(destinations[index], { force: true }).catch(() => {});
+      if (backedUp[index]) {
+        try {
+          await fileOps.rename(backups[index], destinations[index]);
+        } catch {
+          preserveBackups.add(backups[index]);
+        }
+      }
     }
     throw error;
   } finally {
-    await Promise.all([...staged, ...backups].map(path => rm(path, { force: true }).catch(() => {})));
+    const cleanup = [...staged, ...backups.filter(path => !preserveBackups.has(path))];
+    await Promise.all(cleanup.map(path => fileOps.rm(path, { force: true }).catch(() => {})));
   }
 }
 
-export async function collectBalance({ env, historyDirectory, fetchImpl = globalThis.fetch, now = Date.now() }) {
+export async function collectBalance({ env, historyDirectory, fetchImpl = globalThis.fetch, now = Date.now(), fileOps = defaultFileOps }) {
   const { apiKey, apiSecret, password } = validateEnvironment(env);
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required');
   if (typeof historyDirectory !== 'string' || historyDirectory.length === 0) throw new Error('A history directory is required');
@@ -111,7 +120,7 @@ export async function collectBalance({ env, historyDirectory, fetchImpl = global
     await replaceFiles(historyDirectory, [
       ['history.jsonl', historyText],
       ['latest.json', JSON.stringify(latest)],
-    ]);
+    ], fileOps);
     return sample;
   } catch {
     throw new Error('Binance balance collection failed');
