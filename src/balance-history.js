@@ -1,5 +1,6 @@
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+const FIVE_MINUTES = 5 * 60 * 1000;
 const THIRTY_DAYS = 30 * DAY;
 const YEAR = 365 * DAY;
 const FIVE_YEARS = 1825 * DAY;
@@ -37,14 +38,16 @@ export function compactHistory(samples, now) {
   if (!Array.isArray(samples) || !Number.isFinite(now)) throw new Error('Invalid history input');
   const hourly = new Map();
   const daily = new Map();
-  const raw = [];
+  const raw = new Map();
   for (const sample of samples) {
     if (!isValidSample(sample)) continue;
     const time = Date.parse(sample.timestamp);
     const age = now - time;
     if (age < 0 || age > FIVE_YEARS) continue;
     if (age <= THIRTY_DAYS) {
-      raw.push({ timestamp: sample.timestamp, balance: sample.balance, resolution: 'raw' });
+      const bucket = Math.floor(time / FIVE_MINUTES);
+      const prior = raw.get(bucket);
+      if (!prior || time > Date.parse(prior.timestamp)) raw.set(bucket, { timestamp: sample.timestamp, balance: sample.balance, resolution: 'raw' });
     } else if (age <= YEAR) {
       const bucket = Math.floor(time / HOUR);
       const prior = hourly.get(bucket);
@@ -56,7 +59,7 @@ export function compactHistory(samples, now) {
       if (!prior || time > Date.parse(prior.timestamp)) daily.set(bucket, { timestamp: sample.timestamp, balance: sample.balance, resolution: 'daily' });
     }
   }
-  return [...raw, ...hourly.values(), ...daily.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  return [...raw.values(), ...hourly.values(), ...daily.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
 }
 
 export function filterHistory(samples, range, now) {
@@ -66,5 +69,6 @@ export function filterHistory(samples, range, now) {
   const cutoff = now - duration;
   return samples.filter(sample => isValidSample(sample)
     && Date.parse(sample.timestamp) >= cutoff
-    && Date.parse(sample.timestamp) <= now);
+    && Date.parse(sample.timestamp) <= now)
+    .map(({ timestamp, balance, resolution }) => ({ timestamp, balance, resolution }));
 }

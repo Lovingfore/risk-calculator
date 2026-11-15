@@ -21,3 +21,14 @@
 ## Self-Review
 
 The output sample shape is constrained to the three contract fields. Invalid samples are omitted by history compaction/filtering, while invalid inputs to encryption and decryption fail. Bucket keys use UTC epoch hours and UTC calendar dates. Future samples are excluded from compaction and range results. No collector, page, or unrelated existing files were changed.
+
+## Review Follow-Up
+
+Two review findings were fixed:
+
+- Raw samples within the latest 30 days now use UTC five-minute epoch buckets. Only the sample with the greatest timestamp in each bucket is kept; invalid observations are ignored before bucket selection.
+- `filterHistory` now projects every result onto `{ timestamp, balance, resolution }`, even when an input object contains additional properties.
+
+**RED:** Added regression tests first, then ran the focused balance-history test file with the bundled Node executable: `node --test test/balance-history.test.js`. Result: 7 passed, 2 failed. The five-minute test showed both 11:01 and 11:04 samples were retained from the same UTC bucket. The shape test showed `note` and `source` leaked into the returned sample.
+
+**GREEN:** After adding raw five-minute bucket replacement and projecting filtered results to the three contract fields, ran `node --test test/balance-history.test.js test/history-crypto.test.js`: 16 passed, 0 failed. Ran the full `node --test` suite: 21 passed, 0 failed.
