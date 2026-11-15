@@ -27,6 +27,8 @@ node -e "console.log(require('node:crypto').randomBytes(36).toString('base64url'
 
 把生成结果分别保存为 `BALANCE_HISTORY_PASSWORD` Secret，并在网页中输入以解锁。不要把密码、API Key 或 API Secret 发到聊天、提交到仓库或写入页面代码。网页不会保存密码；刷新页面后需要重新输入。
 
+更换 `BALANCE_HISTORY_PASSWORD` 不会自动重加密已有记录。页面解锁和后续采集都需要与当前历史匹配的密码；直接改 Secret 会导致旧记录无法解锁，采集也无法追加。更换前必须先用旧密码迁移历史记录。
+
 配置 Secrets 后，可在 **Actions → Collect Binance wallet balance → Run workflow** 手动启动第一次采集。采集成功后会创建 `balance-history` 分支。分支里的余额记录经过 AES-GCM 加密，但仓库是公开的，密文和采样时间仍可被查看；Git 历史可能保留先前版本，因此更改密码不能擦除旧密文。请保护默认分支，只允许信任的维护者修改可读取 Actions Secrets 的工作流。
 
 采集功能依赖 GitHub Actions 与 GitHub Pages 的免费额度和服务策略，GitHub 不保证永久免费、每次准点运行或数据永不丢失。没有配置 Secrets 或尚无成功采样时，页面会明确显示余额历史未配置，不会显示虚构余额。
