@@ -41,6 +41,12 @@ export function drawBalanceChart(samples, range, context, options = {}) {
   context.strokeStyle = colors.getPropertyValue('--chart-grid').trim() || '#e5eae6';
   context.fillStyle = colors.getPropertyValue('--muted').trim() || '#6c7972';
   context.textBaseline = 'middle';
+  context.save();
+  context.translate(10, plot.top + plot.height / 2);
+  context.rotate(-Math.PI / 2);
+  context.textAlign = 'center';
+  context.fillText('USDT', 0, 0);
+  context.restore();
   const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   for (let row = 0; row <= 3; row += 1) {
     const py = plot.top + (plot.height * row) / 3;
