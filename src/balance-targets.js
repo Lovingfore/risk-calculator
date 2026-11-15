@@ -1,7 +1,7 @@
 const STARTING_PRINCIPAL = 4000;
 const GROWTH_RATE = 1.01;
 const TARGET_COUNT = 625;
-const PAGE_SIZE = 25;
+export const TARGET_PAGE_SIZE = 30;
 
 export function createBalanceTargets() {
   const targets = [];
@@ -31,7 +31,23 @@ export function getCompletedTargetCount(balance) {
   return low;
 }
 
-export function getTargetPage(targets, page, pageSize = PAGE_SIZE) {
+export function getTargetPageForBalance(balance) {
+  if (!Number.isFinite(balance)) return 1;
+
+  let low = 0;
+  let high = BALANCE_TARGETS.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (BALANCE_TARGETS[middle].principal <= balance) low = middle + 1;
+    else high = middle;
+  }
+
+  const totalPages = Math.ceil(BALANCE_TARGETS.length / TARGET_PAGE_SIZE);
+  const currentRow = Math.max(1, low);
+  return Math.min(Math.ceil(currentRow / TARGET_PAGE_SIZE), totalPages);
+}
+
+export function getTargetPage(targets, page, pageSize = TARGET_PAGE_SIZE) {
   const start = (page - 1) * pageSize;
   return targets.slice(start, start + pageSize);
 }

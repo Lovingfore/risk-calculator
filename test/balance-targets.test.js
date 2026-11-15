@@ -21,9 +21,23 @@ test('marks targets complete only when the latest balance is strictly above prin
 
 test('returns one-based pages and includes the final partial page', () => {
   const targets = createBalanceTargets();
-  assert.equal(getTargetPage(targets, 1).length, 25);
+  assert.equal(getTargetPage(targets, 1).length, 30);
   assert.equal(getTargetPage(targets, 1)[0].number, 1);
-  assert.equal(getTargetPage(targets, 2)[0].number, 26);
-  assert.equal(getTargetPage(targets, 25)[0].number, 601);
-  assert.equal(getTargetPage(targets, 25).at(-1).number, 625);
+  assert.equal(getTargetPage(targets, 2)[0].number, 31);
+  assert.equal(getTargetPage(targets, 21).length, 25);
+  assert.equal(getTargetPage(targets, 21)[0].number, 601);
+  assert.equal(getTargetPage(targets, 21).at(-1).number, 625);
+});
+
+test('selects the page containing the current balance target on unlock', async () => {
+  const { getTargetPageForBalance } = await import('../src/balance-targets.js');
+  assert.equal(typeof getTargetPageForBalance, 'function');
+  if (!getTargetPageForBalance) return;
+
+  const targets = createBalanceTargets();
+  assert.equal(getTargetPageForBalance(4000), 1);
+  assert.equal(getTargetPageForBalance(targets[29].principal), 1);
+  assert.equal(getTargetPageForBalance(targets[29].principal + 0.01), 1);
+  assert.equal(getTargetPageForBalance(targets[29].afterGrowth), 2);
+  assert.equal(getTargetPageForBalance(Number.MAX_VALUE), 21);
 });

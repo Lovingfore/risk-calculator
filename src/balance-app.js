@@ -1,7 +1,13 @@
 import { deriveHistoryKey, decryptSample } from './history-crypto.js';
 import { filterHistory, getLatestSample } from './balance-history.js';
 import { drawBalanceChart } from './balance-chart.js';
-import { createBalanceTargets, getCompletedTargetCount, getTargetPage } from './balance-targets.js';
+import {
+  createBalanceTargets,
+  getCompletedTargetCount,
+  getTargetPage,
+  getTargetPageForBalance,
+  TARGET_PAGE_SIZE,
+} from './balance-targets.js';
 
 const BASE_URL = 'https://raw.githubusercontent.com/Lovingfore/risk-calculator/balance-history/';
 const HISTORY_URL = `${BASE_URL}history.jsonl`;
@@ -23,7 +29,6 @@ const targetPageLabel = document.querySelector('#target-page');
 const previousTargetPage = document.querySelector('#target-previous');
 const nextTargetPage = document.querySelector('#target-next');
 const balanceTargets = createBalanceTargets();
-const TARGET_PAGE_SIZE = 25;
 const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 let samples = [];
@@ -197,6 +202,8 @@ form?.addEventListener('submit', async event => {
       return;
     }
     key = derivedKey; samples = result.samples;
+    const { current } = getLatestSample(samples);
+    if (current) targetPage = getTargetPageForBalance(current.balance);
     updateSummary(); renderTargets(); draw();
     pollTimer = window.setInterval(refreshLatest, POLL_MS);
     checkStale();
