@@ -1,5 +1,5 @@
 import { deriveHistoryKey, decryptSample } from './history-crypto.js';
-import { filterHistory, getLatestSample } from './balance-history.js';
+import { DEFAULT_HISTORY_RANGE, filterHistory, getLatestSample } from './balance-history.js';
 import { drawBalanceChart } from './balance-chart.js';
 import {
   createBalanceTargets,
@@ -33,7 +33,7 @@ const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFr
 
 let samples = [];
 let key = null;
-let range = '7d';
+let range = DEFAULT_HISTORY_RANGE;
 let latestTimestamp = null;
 let pollTimer = null;
 let chartState = null;

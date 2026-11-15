@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compactHistory, filterHistory, getLatestSample, parseUsdMBalance } from '../src/balance-history.js';
+import { compactHistory, DEFAULT_HISTORY_RANGE, filterHistory, getLatestSample, parseUsdMBalance } from '../src/balance-history.js';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 const NOW = Date.parse('2026-11-15T12:00:00.000Z');
 const sample = (time, balance, resolution = 'raw') => ({
   timestamp: new Date(time).toISOString(), balance, resolution,
+});
+
+test('defaults the balance chart to the latest 24 hours', () => {
+  const samples = [sample(NOW - DAY - 1, 1), sample(NOW - DAY, 2), sample(NOW, 3)];
+  assert.equal(DEFAULT_HISTORY_RANGE, '24h');
+  assert.deepEqual(filterHistory(samples, DEFAULT_HISTORY_RANGE, NOW), samples.slice(1));
 });
 
 test('selects only the USDT wallet balance from a Binance response', () => {

@@ -4,6 +4,7 @@ const FIVE_MINUTES = 5 * 60 * 1000;
 const THIRTY_DAYS = 30 * DAY;
 const YEAR = 365 * DAY;
 const FIVE_YEARS = 1825 * DAY;
+export const DEFAULT_HISTORY_RANGE = '24h';
 const ranges = new Map([
   ['1h', HOUR], ['24h', DAY], ['7d', 7 * DAY], ['30d', THIRTY_DAYS],
   ['180d', 180 * DAY], ['1y', YEAR], ['3y', 3 * YEAR], ['5y', FIVE_YEARS],
