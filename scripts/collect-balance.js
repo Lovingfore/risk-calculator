@@ -49,7 +49,7 @@ async function readHistory(path, key) {
     } catch {
       throw new Error('Invalid encrypted history');
     }
-    records.push(await decryptSample(record, key));
+    records.push({ sample: await decryptSample(record, key), record });
   }
   return records;
 }
@@ -110,9 +110,10 @@ export async function collectBalance({ env, historyDirectory, fetchImpl = global
     const sample = { timestamp: new Date(now).toISOString(), balance, resolution: 'raw' };
     const historyPath = resolve(historyDirectory, 'history.jsonl');
     const existing = await readHistory(historyPath, key);
-    const compacted = compactHistory([...existing, sample], now);
+    const existingRecords = new Map(existing.map(({ sample: item, record }) => [JSON.stringify(item), record]));
+    const compacted = compactHistory([...existing.map(({ sample: item }) => item), sample], now);
     const [records, latest] = await Promise.all([
-      Promise.all(compacted.map(item => encryptSample(item, key))),
+      Promise.all(compacted.map(item => existingRecords.get(JSON.stringify(item)) ?? encryptSample(item, key))),
       encryptSample(sample, key),
     ]);
     const historyText = records.map(record => JSON.stringify(record)).join('\n') + (records.length ? '\n' : '');

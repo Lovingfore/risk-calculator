@@ -68,6 +68,7 @@ test('fetches USDT, encrypts it, compacts prior history, and writes both data fi
   assert.deepEqual(calls[0].options.headers, { 'X-MBX-APIKEY': API_KEY });
   assert.equal(result.timestamp, new Date(NOW).toISOString());
   const historyLines = (await readFile(join(historyDirectory, 'history.jsonl'), 'utf8')).trim().split('\n');
+  assert.ok(historyLines.includes(JSON.stringify(priorRecord)), 'retained samples should keep their existing encrypted record');
   const history = await Promise.all(historyLines.map(line => decryptSample(JSON.parse(line), key)));
   const latest = await decryptSample(JSON.parse(await readFile(join(historyDirectory, 'latest.json'), 'utf8')), key);
   assert.deepEqual(history, [prior, { timestamp: new Date(NOW).toISOString(), balance: 1234.56, resolution: 'raw' }]);
