@@ -1,6 +1,7 @@
 import { deriveHistoryKey, decryptSample } from './history-crypto.js';
 import { filterHistory, getLatestSample } from './balance-history.js';
 import { drawBalanceChart } from './balance-chart.js';
+import { createBalanceTargets, getCompletedTargetCount, getTargetPage } from './balance-targets.js';
 
 const BASE_URL = 'https://raw.githubusercontent.com/Lovingfore/risk-calculator/balance-history/';
 const HISTORY_URL = `${BASE_URL}history.jsonl`;
@@ -14,6 +15,15 @@ const canvas = document.querySelector('#balance-chart');
 const tooltip = document.querySelector('#chart-tooltip');
 const summary = document.querySelector('#balance-summary');
 const rangeButtons = [...document.querySelectorAll('[data-range]')];
+const balanceDashboard = document.querySelector('#balance-dashboard');
+const targetsPanel = document.querySelector('#balance-targets');
+const targetRows = document.querySelector('#target-rows');
+const targetProgress = document.querySelector('#targets-progress');
+const targetPageLabel = document.querySelector('#target-page');
+const previousTargetPage = document.querySelector('#target-previous');
+const nextTargetPage = document.querySelector('#target-next');
+const balanceTargets = createBalanceTargets();
+const TARGET_PAGE_SIZE = 25;
 const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 let samples = [];
@@ -22,6 +32,7 @@ let range = '7d';
 let latestTimestamp = null;
 let pollTimer = null;
 let chartState = null;
+let targetPage = 1;
 
 function setStatus(message, kind = '') {
   status.textContent = message;
@@ -49,6 +60,44 @@ function updateSummary() {
   time.textContent = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(current.timestamp));
   latestTimestamp = current.timestamp;
   checkStale();
+}
+
+function clearTargets() {
+  targetPage = 1;
+  if (targetRows) targetRows.replaceChildren();
+  if (targetsPanel) targetsPanel.hidden = true;
+  balanceDashboard?.classList.remove('has-targets');
+}
+
+function renderTargets() {
+  if (!targetsPanel || !targetRows) return;
+  const { current } = getLatestSample(samples);
+  if (!current) {
+    clearTargets();
+    return;
+  }
+
+  const completedCount = getCompletedTargetCount(current.balance);
+  const totalPages = Math.ceil(balanceTargets.length / TARGET_PAGE_SIZE);
+  const visibleTargets = getTargetPage(balanceTargets, targetPage, TARGET_PAGE_SIZE);
+  targetRows.replaceChildren(...visibleTargets.map(target => {
+    const row = document.createElement('tr');
+    const completed = target.number <= completedCount;
+    row.classList.toggle('is-complete', completed);
+    row.setAttribute('aria-label', `第 ${target.number} 行${completed ? '，已完成' : ''}`);
+    for (const value of [target.number, fmt.format(target.principal), fmt.format(target.afterGrowth)]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    return row;
+  }));
+  targetProgress.textContent = `已完成 ${completedCount} / ${balanceTargets.length}`;
+  targetPageLabel.textContent = `${targetPage} / ${totalPages}`;
+  previousTargetPage.disabled = targetPage <= 1;
+  nextTargetPage.disabled = targetPage >= totalPages;
+  targetsPanel.hidden = false;
+  balanceDashboard?.classList.add('has-targets');
 }
 
 function checkStale() {
@@ -107,7 +156,7 @@ async function refreshLatest() {
     const index = samples.findIndex(sample => sample.timestamp === latest.timestamp);
     if (index < 0) samples.push(latest); else samples[index] = latest;
     samples.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
-    updateSummary(); draw();
+    updateSummary(); renderTargets(); draw();
   } catch {
     if (latestTimestamp && Date.now() - Date.parse(latestTimestamp) > STALE_MS) {
       setStatus('最新采样已超过 15 分钟，数据可能已过期。', 'warning');
@@ -133,6 +182,9 @@ form?.addEventListener('submit', async event => {
   pollTimer = null;
   key = null;
   samples = [];
+  clearTargets();
+  summary.hidden = true;
+  draw();
   setStatus('正在解锁并读取加密历史…');
   form.querySelector('button').disabled = true;
   try {
@@ -140,15 +192,17 @@ form?.addEventListener('submit', async event => {
     const result = await loadHistory(derivedKey);
     if (!result.configured) {
       key = null; samples = []; summary.hidden = true; draw();
+      clearTargets();
       setStatus('余额历史尚未配置，等待加密记录发布。', 'warning');
       return;
     }
     key = derivedKey; samples = result.samples;
-    updateSummary(); draw();
+    updateSummary(); renderTargets(); draw();
     pollTimer = window.setInterval(refreshLatest, POLL_MS);
     checkStale();
   } catch (error) {
     key = null; samples = []; summary.hidden = true; draw();
+    clearTargets();
     setStatus(error.message || '无法解锁余额历史。', 'error');
   } finally {
     form.querySelector('button').disabled = false;
@@ -160,6 +214,18 @@ rangeButtons.forEach(button => button.addEventListener('click', () => {
   rangeButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
   draw();
 }));
+
+previousTargetPage?.addEventListener('click', () => {
+  if (targetPage <= 1) return;
+  targetPage -= 1;
+  renderTargets();
+});
+
+nextTargetPage?.addEventListener('click', () => {
+  if (targetPage >= Math.ceil(balanceTargets.length / TARGET_PAGE_SIZE)) return;
+  targetPage += 1;
+  renderTargets();
+});
 
 function showTooltip(event) {
   if (!chartState?.points.length) return;

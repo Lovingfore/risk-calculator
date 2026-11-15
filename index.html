@@ -129,24 +129,47 @@
             <div class="balance-delta"><span class="summary-label">相邻采样变化</span><strong id="balance-delta">—</strong></div>
             <div class="balance-sampled"><span class="summary-label">采样时间</span><time id="balance-time">—</time></div>
           </div>
-          <div class="chart-toolbar">
-            <span class="summary-label">时间范围</span>
-            <div class="range-selector" role="group" aria-label="余额时间范围">
-              <button type="button" data-range="1h" aria-pressed="false">1 小时</button>
-              <button type="button" data-range="24h" aria-pressed="false">24 小时</button>
-              <button type="button" data-range="7d" aria-pressed="true">7 天</button>
-              <button type="button" data-range="30d" aria-pressed="false">30 天</button>
-              <button type="button" data-range="180d" aria-pressed="false">180 天</button>
-              <button type="button" data-range="1y" aria-pressed="false">1 年</button>
-              <button type="button" data-range="3y" aria-pressed="false">3 年</button>
-              <button type="button" data-range="5y" aria-pressed="false">5 年</button>
+          <div id="balance-dashboard" class="balance-dashboard">
+            <div class="chart-panel">
+              <div class="chart-toolbar">
+                <span class="summary-label">时间范围</span>
+                <div class="range-selector" role="group" aria-label="余额时间范围">
+                  <button type="button" data-range="1h" aria-pressed="false">1 小时</button>
+                  <button type="button" data-range="24h" aria-pressed="false">24 小时</button>
+                  <button type="button" data-range="7d" aria-pressed="true">7 天</button>
+                  <button type="button" data-range="30d" aria-pressed="false">30 天</button>
+                  <button type="button" data-range="180d" aria-pressed="false">180 天</button>
+                  <button type="button" data-range="1y" aria-pressed="false">1 年</button>
+                  <button type="button" data-range="3y" aria-pressed="false">3 年</button>
+                  <button type="button" data-range="5y" aria-pressed="false">5 年</button>
+                </div>
+              </div>
+              <div class="chart-frame">
+                <canvas id="balance-chart" aria-label="账户 USDT 余额历史曲线">浏览器不支持 Canvas。</canvas>
+                <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+              </div>
+              <p class="resolution-hint">较早的历史记录按小时或按日聚合展示。</p>
             </div>
+            <section id="balance-targets" class="balance-targets" aria-labelledby="targets-title" hidden>
+              <div class="targets-heading">
+                <h3 id="targets-title">本金增长计划</h3>
+                <span id="targets-progress" class="targets-progress" aria-live="polite">已完成 0 / 625</span>
+              </div>
+              <div class="target-table-viewport">
+                <table class="target-table">
+                  <thead>
+                    <tr><th scope="col">序号</th><th scope="col">本金 (USDT)</th><th scope="col">增长后 (+1%)</th></tr>
+                  </thead>
+                  <tbody id="target-rows"></tbody>
+                </table>
+              </div>
+              <nav class="target-pagination" aria-label="增长目标分页">
+                <button id="target-previous" type="button" disabled>上一页</button>
+                <span id="target-page" aria-live="polite">1 / 25</span>
+                <button id="target-next" type="button">下一页</button>
+              </nav>
+            </section>
           </div>
-          <div class="chart-frame">
-            <canvas id="balance-chart" aria-label="账户 USDT 余额历史曲线">浏览器不支持 Canvas。</canvas>
-            <div id="chart-tooltip" class="chart-tooltip" hidden></div>
-          </div>
-          <p class="resolution-hint">较早的历史记录按小时或按日聚合展示。</p>
         </section>
       </main>
 
