@@ -72,3 +72,16 @@ export function filterHistory(samples, range, now) {
     && Date.parse(sample.timestamp) <= now)
     .map(({ timestamp, balance, resolution }) => ({ timestamp, balance, resolution }));
 }
+
+export function getLatestSample(samples) {
+  if (!Array.isArray(samples)) throw new Error('Invalid history input');
+  const ordered = samples.filter(isValidSample)
+    .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+  const current = ordered.at(-1) ?? null;
+  const previous = ordered.at(-2) ?? null;
+  return {
+    current,
+    previous,
+    delta: current && previous ? current.balance - previous.balance : null,
+  };
+}

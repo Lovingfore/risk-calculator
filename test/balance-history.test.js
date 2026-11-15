@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compactHistory, filterHistory, parseUsdMBalance } from '../src/balance-history.js';
+import { compactHistory, filterHistory, getLatestSample, parseUsdMBalance } from '../src/balance-history.js';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -95,4 +95,17 @@ test('rejects an unsupported filter range', () => {
 test('returns only the fixed sample fields when filtering records with extra properties', () => {
   const input = { ...sample(NOW, 99), note: 'unexpected', source: 'fixture' };
   assert.deepEqual(filterHistory([input], '1h', NOW), [sample(NOW, 99)]);
+});
+
+test('selects the newest sample and its immediate chronological predecessor', () => {
+  const older = sample(NOW - 2 * HOUR, 100);
+  const newer = sample(NOW - HOUR, 125, 'hourly');
+  const latest = sample(NOW, 110);
+  assert.deepEqual(getLatestSample([latest, older, newer]), {
+    current: latest,
+    previous: newer,
+    delta: -15,
+  });
+  assert.deepEqual(getLatestSample([older]), { current: older, previous: null, delta: null });
+  assert.deepEqual(getLatestSample([]), { current: null, previous: null, delta: null });
 });
