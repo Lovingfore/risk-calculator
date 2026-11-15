@@ -26,10 +26,11 @@ jobs:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
           BALANCE_HISTORY_PASSWORD: ${{ secrets.BALANCE_HISTORY_PASSWORD }}
+          CLASH_SUBSCRIPTION_URL: ${{ secrets.CLASH_SUBSCRIPTION_URL }}
         shell: bash
         run: |
           missing=0
-          for name in BINANCE_API_KEY BINANCE_API_SECRET BALANCE_HISTORY_PASSWORD; do
+          for name in BINANCE_API_KEY BINANCE_API_SECRET BALANCE_HISTORY_PASSWORD CLASH_SUBSCRIPTION_URL; do
             if [[ -z "${!name}" ]]; then
               echo "::notice title=余额采集未配置::请先在仓库 Actions Secrets 中设置 ${name}。"
               missing=1
@@ -67,6 +68,18 @@ jobs:
             exit "$result"
           fi
 
+      - name: Set up Node.js 24
+        if: steps.secrets-check.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Start the Japan proxy route
+        if: steps.secrets-check.outputs.ready == 'true'
+        env:
+          CLASH_SUBSCRIPTION_URL: ${{ secrets.CLASH_SUBSCRIPTION_URL }}
+        run: bash "$GITHUB_WORKSPACE/scripts/start-binance-proxy.sh"
+
       - name: Collect and encrypt the USDT wallet balance
         if: steps.secrets-check.outputs.ready == 'true'
         working-directory: ${{ runner.temp }}/risk-calculator-balance
@@ -74,6 +87,10 @@ jobs:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
           BALANCE_HISTORY_PASSWORD: ${{ secrets.BALANCE_HISTORY_PASSWORD }}
+          NODE_USE_ENV_PROXY: '1'
+          HTTPS_PROXY: http://127.0.0.1:7890
+          HTTP_PROXY: http://127.0.0.1:7890
+          NO_PROXY: 127.0.0.1,localhost
         run: node "$GITHUB_WORKSPACE/scripts/collect-balance.js"
 
       - name: Publish encrypted history
