@@ -8,6 +8,7 @@
     <title>止损风险计算器</title>
     <link rel="stylesheet" href="./styles.css">
     <script type="module" src="./src/app.js"></script>
+    <script type="module" src="./src/balance-app.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -106,6 +107,47 @@
           <span class="assumption-indicator" aria-hidden="true"></span>
           <p>按 Binance USDⓈ-M 普通账户吃单费率估算，开仓和平仓各按 0.05% 计入。假设止损按输入价格成交；未计滑点与资金费率。下单数量需按交易对步进向下取整。</p>
         </aside>
+
+        <section class="balance-section" aria-labelledby="balance-title">
+          <div class="balance-heading">
+            <div>
+              <p class="eyebrow">ACCOUNT HISTORY</p>
+              <h2 id="balance-title">账户余额曲线</h2>
+            </div>
+            <form id="history-unlock" class="unlock-form" autocomplete="off">
+              <label class="sr-only" for="history-password">历史密码</label>
+              <input id="history-password" name="password" type="password" minlength="32" placeholder="输入历史密码" autocomplete="off" required>
+              <button type="submit">解锁历史</button>
+            </form>
+          </div>
+          <p id="history-status" class="history-status" role="status" aria-live="polite">输入历史密码以解锁加密余额记录。</p>
+          <div id="balance-summary" class="balance-summary" hidden>
+            <div class="balance-current">
+              <span class="summary-label">最新余额</span>
+              <strong id="balance-value">—</strong><span class="summary-unit">USDT</span>
+            </div>
+            <div class="balance-delta"><span class="summary-label">相邻采样变化</span><strong id="balance-delta">—</strong></div>
+            <div class="balance-sampled"><span class="summary-label">采样时间</span><time id="balance-time">—</time></div>
+          </div>
+          <div class="chart-toolbar">
+            <span class="summary-label">时间范围</span>
+            <div class="range-selector" role="group" aria-label="余额时间范围">
+              <button type="button" data-range="1h" aria-pressed="false">1 小时</button>
+              <button type="button" data-range="24h" aria-pressed="false">24 小时</button>
+              <button type="button" data-range="7d" aria-pressed="true">7 天</button>
+              <button type="button" data-range="30d" aria-pressed="false">30 天</button>
+              <button type="button" data-range="180d" aria-pressed="false">180 天</button>
+              <button type="button" data-range="1y" aria-pressed="false">1 年</button>
+              <button type="button" data-range="3y" aria-pressed="false">3 年</button>
+              <button type="button" data-range="5y" aria-pressed="false">5 年</button>
+            </div>
+          </div>
+          <div class="chart-frame">
+            <canvas id="balance-chart" aria-label="账户 USDT 余额历史曲线">浏览器不支持 Canvas。</canvas>
+            <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+          </div>
+          <p class="resolution-hint">较早的历史记录按小时或按日聚合展示。</p>
+        </section>
       </main>
 
       <footer class="site-footer">计算结果为仓位估算，金额按 USDT 分精度向下取整。</footer>
