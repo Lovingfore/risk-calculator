@@ -4,8 +4,20 @@ on:
   schedule:
     - cron: '3,8,13,18,23,28,33,38,43,48,53,58 * * * *'
   workflow_dispatch:
+    inputs:
+      continue_loop:
+        description: 启动连续采集
+        type: boolean
+        required: false
+        default: false
+      collection_cycles:
+        description: 每批采样次数（连续模式）
+        type: number
+        required: false
+        default: 68
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -16,6 +28,7 @@ jobs:
   collect:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     steps:
       - name: Check out the default branch
         uses: actions/checkout@v4
@@ -80,9 +93,19 @@ jobs:
           CLASH_SUBSCRIPTION_URL: ${{ secrets.CLASH_SUBSCRIPTION_URL }}
         run: bash "$GITHUB_WORKSPACE/scripts/start-binance-proxy.sh"
 
-      - name: Collect and encrypt the USDT wallet balance
+      - name: Prepare collector files for the data branch
         if: steps.secrets-check.outputs.ready == 'true'
-        working-directory: ${{ runner.temp }}/risk-calculator-balance
+        shell: bash
+        run: |
+          collector_dir="$RUNNER_TEMP/risk-calculator-collector"
+          mkdir -p "$collector_dir/scripts" "$collector_dir/src"
+          cp "$GITHUB_WORKSPACE/scripts/collect-balance.js" "$collector_dir/scripts/"
+          cp "$GITHUB_WORKSPACE/scripts/collect-balance-loop.sh" "$collector_dir/scripts/"
+          cp "$GITHUB_WORKSPACE/src/balance-history.js" "$collector_dir/src/"
+          cp "$GITHUB_WORKSPACE/src/history-crypto.js" "$collector_dir/src/"
+
+      - name: Collect and publish USDT wallet balance every five minutes
+        if: steps.secrets-check.outputs.ready == 'true'
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
@@ -91,26 +114,8 @@ jobs:
           HTTPS_PROXY: http://127.0.0.1:7890
           HTTP_PROXY: http://127.0.0.1:7890
           NO_PROXY: 127.0.0.1,localhost
-        run: node "$GITHUB_WORKSPACE/scripts/collect-balance.js"
-
-      - name: Publish encrypted history
-        if: steps.secrets-check.outputs.ready == 'true'
-        shell: bash
-        run: |
-          if [[ "${{ steps.history-branch.outputs.exists }}" == "true" ]]; then
-            git switch --force-create balance-history FETCH_HEAD
-          else
-            git switch --orphan balance-history
-            git rm -rf --ignore-unmatch .
-          fi
-          cp "$RUNNER_TEMP/risk-calculator-balance/history.jsonl" history.jsonl
-          cp "$RUNNER_TEMP/risk-calculator-balance/latest.json" latest.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- history.jsonl latest.json
-          if git diff --cached --quiet; then
-            echo "加密余额记录没有变化。"
-          else
-            git commit -m "Update encrypted balance history"
-            git push origin HEAD:balance-history
-          fi
+          ACTIONS_DISPATCH_TOKEN: ${{ github.token }}
+          HISTORY_BRANCH_EXISTS: ${{ steps.history-branch.outputs.exists }}
+          CONTINUE_LOOP: ${{ inputs.continue_loop || false }}
+          COLLECTION_CYCLES: ${{ inputs.collection_cycles || 68 }}
+        run: bash "$RUNNER_TEMP/risk-calculator-collector/scripts/collect-balance-loop.sh"
