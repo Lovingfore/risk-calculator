@@ -34,7 +34,7 @@ test('shows a range-empty state when unlocked history has no samples in the sele
   const previousGetComputedStyle = globalThis.getComputedStyle;
   globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
   try {
-    drawBalanceChart([], '1h', context, {
+    drawBalanceChart([], '24h', context, {
       now: Date.parse('2026-11-16T21:51:00.000Z'),
       hasHistory: true,
     });
@@ -44,4 +44,17 @@ test('shows a range-empty state when unlocked history has no samples in the sele
   }
   assert.ok(labels.includes('此时间范围暂无记录'));
   assert.ok(!labels.includes('解锁后显示余额记录'));
+});
+
+test('rejects the removed one-hour range', () => {
+  const canvas = { width: 0, height: 0, getBoundingClientRect: () => ({ width: 600, height: 300 }) };
+  const context = new Proxy({ canvas }, { get: (target, property) => property in target ? target[property] : () => {} });
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
+  try {
+    assert.throws(() => drawBalanceChart([], '1h', context), /Unsupported history range/);
+  } finally {
+    if (previousGetComputedStyle) globalThis.getComputedStyle = previousGetComputedStyle;
+    else delete globalThis.getComputedStyle;
+  }
 });

@@ -84,8 +84,8 @@ test('keeps only the latest valid sample in each UTC five-minute raw bucket', ()
   assert.deepEqual(compactHistory(samples, NOW), [samples[1], samples[3]]);
 });
 
-test('filters actual samples using all eight supported time ranges', () => {
-  const ranges = [['1h', HOUR], ['24h', DAY], ['7d', 7 * DAY], ['30d', 30 * DAY],
+test('filters actual samples using all seven supported time ranges', () => {
+  const ranges = [['24h', DAY], ['7d', 7 * DAY], ['30d', 30 * DAY],
     ['180d', 180 * DAY], ['1y', 365 * DAY], ['3y', 3 * 365 * DAY], ['5y', 5 * 365 * DAY]];
   const samples = ranges.map(([, duration], index) => sample(NOW - duration, index));
   samples.push(sample(NOW, 99));
@@ -96,11 +96,12 @@ test('filters actual samples using all eight supported time ranges', () => {
 
 test('rejects an unsupported filter range', () => {
   assert.throws(() => filterHistory([], '2y', NOW));
+  assert.throws(() => filterHistory([], '1h', NOW));
 });
 
 test('returns only the fixed sample fields when filtering records with extra properties', () => {
   const input = { ...sample(NOW, 99), note: 'unexpected', source: 'fixture' };
-  assert.deepEqual(filterHistory([input], '1h', NOW), [sample(NOW, 99)]);
+  assert.deepEqual(filterHistory([input], '24h', NOW), [sample(NOW, 99)]);
 });
 
 test('selects the newest sample and its immediate chronological predecessor', () => {

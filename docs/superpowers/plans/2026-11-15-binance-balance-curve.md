@@ -37,9 +37,9 @@
 - `decryptSample(record, key)` 返回 `{ timestamp, balance, resolution }`，校验失败时抛错。
 - `parseUsdMBalance(payload)` 返回 USDT `balance` 数值，缺失或格式错误时抛错。
 - `compactHistory(samples, now)` 返回按 UTC 规则压缩、按时间升序排列并限制五年保留期的记录；每小时/每日只留桶内 timestamp 最大的有效样本。
-- `filterHistory(samples, range, now)` 接受 `1h | 24h | 7d | 30d | 180d | 1y | 3y | 5y` 和以毫秒计的当前时间，返回时间窗内的实际样本。
+- `filterHistory(samples, range, now)` 接受 `24h | 7d | 30d | 180d | 1y | 3y | 5y` 和以毫秒计的当前时间，返回时间窗内的实际样本。
 
-- [ ] **步骤 1：先写失败测试**，覆盖正确密码往返、错误密码、篡改记录、USDT 余额字段、错误响应、UTC 小时/日汇总、30/365/1825 天边界和八种范围过滤。
+- [ ] **步骤 1：先写失败测试**，覆盖正确密码往返、错误密码、篡改记录、USDT 余额字段、错误响应、UTC 小时/日汇总、30/365/1825 天边界和七种范围过滤。
 - [ ] **步骤 2：运行 `node --test`，确认因模块缺失而失败。**
 - [ ] **步骤 3：实现最小的 Web Crypto 加解密、USDT 解析和纯函数汇总。** 使用 AES-GCM 96 位随机 IV；共享盐作为公开常量；每条加密样本单独一行保存。
 - [ ] **步骤 4：重跑 `node --test`，确认测试通过；再执行 Node 与 Web Crypto 互通检查。**
@@ -69,11 +69,11 @@
 - 新建：`src/balance-chart.js`
 
 **接口：**
-- 页面从 `https://raw.githubusercontent.com/Lovingfore/risk-calculator/balance-history/` 读取 `history.jsonl` 和 `latest.json`；时间范围值固定为 `1h | 24h | 7d | 30d | 180d | 1y | 3y | 5y`。
+- 页面从 `https://raw.githubusercontent.com/Lovingfore/risk-calculator/balance-history/` 读取 `history.jsonl` 和 `latest.json`；时间范围值固定为 `24h | 7d | 30d | 180d | 1y | 3y | 5y`。
 - 用户提交历史密码后，`balance-app.js` 解密历史，显示最新余额、相邻采样变化、采样时间及状态；不保存密码。
 - `balance-chart.js` 接收 `{ timestamp, balance, resolution }[]`、时间范围和 Canvas 上下文，绘制带时间/USDT 坐标、悬浮提示的响应式曲线。
 
-- [ ] **步骤 1：增加中文余额面板、密码输入、状态区和八档时间选择。**
+- [ ] **步骤 1：增加中文余额面板、密码输入、状态区和七档时间选择。**
 - [ ] **步骤 2：接入解密、历史加载、30 秒最新点刷新、错误和 15 分钟过期提示。**
 - [ ] **步骤 3：绘制曲线与坐标/提示，在桌面和窄屏浏览器中检查布局。**
 - [ ] **步骤 4：确认原计算器输入和结果不受影响。**

@@ -1,5 +1,5 @@
 const RANGE_MS = new Map([
-  ['1h', 60 * 60 * 1000], ['24h', 24 * 60 * 60 * 1000], ['7d', 7 * 24 * 60 * 60 * 1000],
+  ['24h', 24 * 60 * 60 * 1000], ['7d', 7 * 24 * 60 * 60 * 1000],
   ['30d', 30 * 24 * 60 * 60 * 1000], ['180d', 180 * 24 * 60 * 60 * 1000],
   ['1y', 365 * 24 * 60 * 60 * 1000], ['3y', 3 * 365 * 24 * 60 * 60 * 1000], ['5y', 5 * 365 * 24 * 60 * 60 * 1000],
 ]);
@@ -81,7 +81,7 @@ export function drawBalanceChart(samples, range, context, options = {}) {
 
 export function formatDate(value, range) {
   const date = new Date(value);
-  const options = range === '1h' || range === '24h'
+  const options = range === '24h'
     ? { hour: '2-digit', minute: '2-digit' }
     : range === '7d' || range === '30d' ? { month: 'numeric', day: 'numeric' }
       : { year: '2-digit', month: 'numeric' };
