@@ -47,7 +47,9 @@ function setStatus(message, kind = '') {
 
 function draw() {
   if (!canvas) return;
-  chartState = drawBalanceChart(filterHistory(samples, range, Date.now()), range, canvas.getContext('2d'));
+  chartState = drawBalanceChart(filterHistory(samples, range, Date.now()), range, canvas.getContext('2d'), {
+    hasHistory: samples.length > 0,
+  });
   tooltip.hidden = true;
 }
 

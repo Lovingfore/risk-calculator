@@ -21,3 +21,27 @@ test('labels the balance axis in USDT', () => {
   }
   assert.ok(labels.includes('USDT'));
 });
+
+test('shows a range-empty state when unlocked history has no samples in the selected range', () => {
+  const labels = [];
+  const canvas = { width: 0, height: 0, getBoundingClientRect: () => ({ width: 600, height: 300 }) };
+  const context = {
+    canvas,
+    setTransform() {}, clearRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    fill() {}, arc() {}, save() {}, restore() {}, translate() {}, rotate() {},
+    fillText(text) { labels.push(text); },
+  };
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
+  try {
+    drawBalanceChart([], '1h', context, {
+      now: Date.parse('2026-11-16T21:51:00.000Z'),
+      hasHistory: true,
+    });
+  } finally {
+    if (previousGetComputedStyle) globalThis.getComputedStyle = previousGetComputedStyle;
+    else delete globalThis.getComputedStyle;
+  }
+  assert.ok(labels.includes('此时间范围暂无记录'));
+  assert.ok(!labels.includes('解锁后显示余额记录'));
+});

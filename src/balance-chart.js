@@ -64,7 +64,7 @@ export function drawBalanceChart(samples, range, context, options = {}) {
   }
   if (!points.length) {
     context.textAlign = 'center'; context.fillStyle = '#6c7972';
-    context.fillText(samples.length ? '此时间范围暂无记录' : '解锁后显示余额记录', width / 2, height / 2);
+    context.fillText(options.hasHistory ? '此时间范围暂无记录' : '解锁后显示余额记录', width / 2, height / 2);
     return { points: [], plot, x, y };
   }
   context.beginPath();
