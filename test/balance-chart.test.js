@@ -46,6 +46,29 @@ test('shows a range-empty state when unlocked history has no samples in the sele
   assert.ok(!labels.includes('解锁后显示余额记录'));
 });
 
+test('shows the configured empty state before the first equity sample', () => {
+  const labels = [];
+  const canvas = { width: 0, height: 0, getBoundingClientRect: () => ({ width: 600, height: 300 }) };
+  const context = {
+    canvas,
+    setTransform() {}, clearRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    fill() {}, arc() {}, save() {}, restore() {}, translate() {}, rotate() {},
+    fillText(text) { labels.push(text); },
+  };
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
+  try {
+    drawBalanceChart([], '24h', context, {
+      now: Date.parse('2026-11-16T21:51:00.000Z'),
+      emptyMessage: '等待首次账户权益采样',
+    });
+  } finally {
+    if (previousGetComputedStyle) globalThis.getComputedStyle = previousGetComputedStyle;
+    else delete globalThis.getComputedStyle;
+  }
+  assert.ok(labels.includes('等待首次账户权益采样'));
+});
+
 test('rejects the removed one-hour range', () => {
   const canvas = { width: 0, height: 0, getBoundingClientRect: () => ({ width: 600, height: 300 }) };
   const context = new Proxy({ canvas }, { get: (target, property) => property in target ? target[property] : () => {} });

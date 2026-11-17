@@ -17,6 +17,13 @@ test('encrypts and decrypts a sample with the correct password', async () => {
   assert.deepEqual(await decryptSample(record, key), sample);
 });
 
+test('preserves the account equity marker in encrypted history', async () => {
+  const key = await deriveHistoryKey('a'.repeat(32));
+  const equitySample = { ...sample, balance: 1210, balanceType: 'equity' };
+  const record = await encryptSample(equitySample, key);
+  assert.deepEqual(await decryptSample(record, key), equitySample);
+});
+
 test('rejects a sample encrypted with a different password', async () => {
   const record = await encryptSample(sample, await deriveHistoryKey('a'.repeat(32)));
   await assert.rejects(decryptSample(record, await deriveHistoryKey('b'.repeat(32))));
@@ -47,6 +54,7 @@ test('rejects invalid sample fields after authenticated decryption', async () =>
     { ...sample, balance: -1 },
     { ...sample, balance: Infinity },
     { ...sample, resolution: 'weekly' },
+    { ...sample, balanceType: 'unrealized' },
   ]) {
     await assert.rejects(encryptSample(invalid, key));
   }

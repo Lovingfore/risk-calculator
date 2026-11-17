@@ -32,7 +32,13 @@ function validateSample(sample) {
   }
   if (typeof balance !== 'number' || !Number.isFinite(balance) || balance < 0) throw new Error('Invalid sample balance');
   if (!['raw', 'hourly', 'daily'].includes(resolution)) throw new Error('Invalid sample resolution');
-  return { timestamp, balance, resolution };
+  if (sample.balanceType !== undefined && sample.balanceType !== 'equity') throw new Error('Invalid sample balance type');
+  return {
+    timestamp,
+    balance,
+    resolution,
+    ...(sample.balanceType === 'equity' ? { balanceType: 'equity' } : {}),
+  };
 }
 
 export async function deriveHistoryKey(password) {

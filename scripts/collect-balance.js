@@ -2,10 +2,10 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compactHistory, parseUsdMBalance } from '../src/balance-history.js';
+import { compactHistory, parseUsdMAccountEquity } from '../src/balance-history.js';
 import { deriveHistoryKey, decryptSample, encryptSample } from '../src/history-crypto.js';
 
-const API_URL = 'https://fapi.binance.com/fapi/v3/balance';
+const API_URL = 'https://fapi.binance.com/fapi/v3/account';
 const defaultFileOps = { writeFile, rename, rm };
 
 export function buildSignedBalanceRequest({ apiKey, apiSecret, timestamp }) {
@@ -119,9 +119,9 @@ export async function collectBalance({ env, historyDirectory, fetchImpl = global
       safeHttpDetail = `HTTP ${status}${code === null ? '' : `, Binance code ${code}`}`;
       throw new Error('Binance request failed');
     }
-    phase = 'USDT response parsing';
-    const balance = parseUsdMBalance(await response.json());
-    const sample = { timestamp: new Date(now).toISOString(), balance, resolution: 'raw' };
+    phase = 'account equity parsing';
+    const balance = parseUsdMAccountEquity(await response.json());
+    const sample = { timestamp: new Date(now).toISOString(), balance, balanceType: 'equity', resolution: 'raw' };
     const historyPath = resolve(historyDirectory, 'history.jsonl');
     phase = 'history decryption';
     const existing = await readHistory(historyPath, key);

@@ -112,7 +112,7 @@
           <div class="balance-heading">
             <div>
               <p class="eyebrow">ACCOUNT HISTORY</p>
-              <h2 id="balance-title">账户余额曲线</h2>
+              <h2 id="balance-title">账户权益曲线</h2>
             </div>
             <form id="history-unlock" class="unlock-form" autocomplete="off">
               <label class="sr-only" for="history-password">历史密码</label>
@@ -120,13 +120,13 @@
               <button type="submit">解锁历史</button>
             </form>
           </div>
-          <p id="history-status" class="history-status" role="status" aria-live="polite">输入历史密码以解锁加密余额记录。</p>
+          <p id="history-status" class="history-status" role="status" aria-live="polite">输入历史密码以解锁加密账户权益记录。</p>
           <div id="balance-summary" class="balance-summary" hidden>
             <div class="balance-current">
-              <span class="summary-label">最新余额</span>
+              <span class="summary-label">最新权益（含未实现盈亏）</span>
               <strong id="balance-value">—</strong><span class="summary-unit">USDT</span>
             </div>
-            <div class="balance-delta"><span class="summary-label">相邻采样变化</span><strong id="balance-delta">—</strong></div>
+            <div class="balance-delta"><span class="summary-label">相邻权益变化</span><strong id="balance-delta">—</strong></div>
             <div class="balance-sampled"><span class="summary-label">采样时间</span><time id="balance-time">—</time></div>
           </div>
           <div id="balance-dashboard" class="balance-dashboard">
@@ -144,10 +144,10 @@
                 </div>
               </div>
               <div class="chart-frame">
-                <canvas id="balance-chart" aria-label="账户 USDT 余额历史曲线">浏览器不支持 Canvas。</canvas>
+                <canvas id="balance-chart" aria-label="含持仓未实现盈亏的 USDT 账户权益历史曲线">浏览器不支持 Canvas。</canvas>
                 <div id="chart-tooltip" class="chart-tooltip" hidden></div>
               </div>
-              <p class="resolution-hint">较早的历史记录按小时或按日聚合展示。</p>
+              <p class="resolution-hint">含持仓未实现盈亏；曲线从启用权益采样后开始，之后的较早记录按小时或按日聚合。</p>
             </div>
             <section id="balance-targets" class="balance-targets" aria-labelledby="targets-title" hidden>
               <div class="targets-heading">

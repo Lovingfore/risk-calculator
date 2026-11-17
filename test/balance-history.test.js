@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compactHistory, DEFAULT_HISTORY_RANGE, filterHistory, getLatestSample, parseUsdMBalance } from '../src/balance-history.js';
+import {
+  compactHistory,
+  DEFAULT_HISTORY_RANGE,
+  filterAccountEquity,
+  filterHistory,
+  getLatestSample,
+  parseUsdMAccountEquity,
+  parseUsdMBalance,
+} from '../src/balance-history.js';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -32,6 +40,22 @@ test('rejects malformed or unsuccessful Binance balance responses', () => {
     [{ asset: 'USDT', balance: 'NaN' }],
     [{ asset: 'USDT', balance: '-1' }],
   ]) assert.throws(() => parseUsdMBalance(payload));
+});
+
+test('calculates USD-M account equity from wallet balance and unrealized profit', () => {
+  assert.equal(parseUsdMAccountEquity({ totalWalletBalance: '4214.32', totalUnrealizedProfit: '-14.32' }), 4200);
+  assert.equal(parseUsdMAccountEquity({ totalWalletBalance: 4000, totalUnrealizedProfit: 25.5 }), 4025.5);
+});
+
+test('rejects malformed USD-M account equity responses', () => {
+  for (const payload of [
+    null,
+    [],
+    { totalWalletBalance: 'NaN', totalUnrealizedProfit: '1' },
+    { totalWalletBalance: '-1', totalUnrealizedProfit: '0' },
+    { totalWalletBalance: '100', totalUnrealizedProfit: '-101' },
+    { totalWalletBalance: '100' },
+  ]) assert.throws(() => parseUsdMAccountEquity(payload));
 });
 
 test('compresses with UTC hour and day buckets and keeps latest valid sample', () => {
@@ -84,6 +108,22 @@ test('keeps only the latest valid sample in each UTC five-minute raw bucket', ()
   assert.deepEqual(compactHistory(samples, NOW), [samples[1], samples[3]]);
 });
 
+test('keeps legacy wallet and equity samples separate in the same retention bucket', () => {
+  const wallet = sample(NOW - 60_000, 4000);
+  const equity = { ...sample(NOW - 30_000, 4100), balanceType: 'equity' };
+  assert.deepEqual(compactHistory([wallet, equity], NOW), [
+    { ...wallet, resolution: 'raw' },
+    { ...equity, resolution: 'raw' },
+  ]);
+});
+
+test('selects only explicitly tagged equity samples and preserves legacy samples separately', () => {
+  const wallet = sample(NOW - 60_000, 4000);
+  const equity = { ...sample(NOW, 4100), balanceType: 'equity' };
+  assert.deepEqual(filterAccountEquity([wallet, equity]), [equity]);
+  assert.deepEqual(filterAccountEquity([wallet]), []);
+});
+
 test('filters actual samples using all seven supported time ranges', () => {
   const ranges = [['24h', DAY], ['7d', 7 * DAY], ['30d', 30 * DAY],
     ['180d', 180 * DAY], ['1y', 365 * DAY], ['3y', 3 * 365 * DAY], ['5y', 5 * 365 * DAY]];
@@ -100,8 +140,8 @@ test('rejects an unsupported filter range', () => {
 });
 
 test('returns only the fixed sample fields when filtering records with extra properties', () => {
-  const input = { ...sample(NOW, 99), note: 'unexpected', source: 'fixture' };
-  assert.deepEqual(filterHistory([input], '24h', NOW), [sample(NOW, 99)]);
+  const input = { ...sample(NOW, 99), balanceType: 'equity', note: 'unexpected', source: 'fixture' };
+  assert.deepEqual(filterHistory([input], '24h', NOW), [{ ...sample(NOW, 99), balanceType: 'equity' }]);
 });
 
 test('selects the newest sample and its immediate chronological predecessor', () => {

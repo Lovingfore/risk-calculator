@@ -20,7 +20,14 @@ function isValidSample(sample) {
     && typeof balance === 'number'
     && Number.isFinite(balance)
     && balance >= 0
+    && (sample.balanceType === undefined || sample.balanceType === 'equity')
     && ['raw', 'hourly', 'daily'].includes(resolution);
+}
+
+function sampleForResolution(sample, resolution) {
+  const result = { timestamp: sample.timestamp, balance: sample.balance, resolution };
+  if (sample.balanceType === 'equity') result.balanceType = 'equity';
+  return result;
 }
 
 export function parseUsdMBalance(payload) {
@@ -35,6 +42,31 @@ export function parseUsdMBalance(payload) {
   return balance;
 }
 
+export function parseUsdMAccountEquity(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Invalid Binance account response');
+  }
+  const { totalWalletBalance, totalUnrealizedProfit } = payload;
+  const validNumber = value => (typeof value === 'string' && /^-?(?:\d+\.?\d*|\.\d+)$/.test(value))
+    || typeof value === 'number' && Number.isFinite(value);
+  if (!validNumber(totalWalletBalance) || !validNumber(totalUnrealizedProfit)) {
+    throw new Error('Invalid Binance account equity fields');
+  }
+  const walletBalance = Number(totalWalletBalance);
+  const unrealizedProfit = Number(totalUnrealizedProfit);
+  const equity = walletBalance + unrealizedProfit;
+  if (walletBalance < 0 || !Number.isFinite(equity) || equity < 0) {
+    throw new Error('Invalid Binance account equity');
+  }
+  return equity;
+}
+
+export function filterAccountEquity(samples) {
+  if (!Array.isArray(samples)) throw new Error('Invalid history input');
+  return samples.filter(sample => isValidSample(sample) && sample.balanceType === 'equity')
+    .map(({ timestamp, balance, resolution }) => ({ timestamp, balance, resolution, balanceType: 'equity' }));
+}
+
 export function compactHistory(samples, now) {
   if (!Array.isArray(samples) || !Number.isFinite(now)) throw new Error('Invalid history input');
   const hourly = new Map();
@@ -45,19 +77,20 @@ export function compactHistory(samples, now) {
     const time = Date.parse(sample.timestamp);
     const age = now - time;
     if (age < 0 || age > FIVE_YEARS) continue;
+    const type = sample.balanceType === 'equity' ? 'equity' : 'wallet';
     if (age <= THIRTY_DAYS) {
-      const bucket = Math.floor(time / FIVE_MINUTES);
+      const bucket = `${type}:${Math.floor(time / FIVE_MINUTES)}`;
       const prior = raw.get(bucket);
-      if (!prior || time > Date.parse(prior.timestamp)) raw.set(bucket, { timestamp: sample.timestamp, balance: sample.balance, resolution: 'raw' });
+      if (!prior || time > Date.parse(prior.timestamp)) raw.set(bucket, sampleForResolution(sample, 'raw'));
     } else if (age <= YEAR) {
-      const bucket = Math.floor(time / HOUR);
+      const bucket = `${type}:${Math.floor(time / HOUR)}`;
       const prior = hourly.get(bucket);
-      if (!prior || time > Date.parse(prior.timestamp)) hourly.set(bucket, { timestamp: sample.timestamp, balance: sample.balance, resolution: 'hourly' });
+      if (!prior || time > Date.parse(prior.timestamp)) hourly.set(bucket, sampleForResolution(sample, 'hourly'));
     } else {
       const date = new Date(time);
-      const bucket = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+      const bucket = `${type}:${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
       const prior = daily.get(bucket);
-      if (!prior || time > Date.parse(prior.timestamp)) daily.set(bucket, { timestamp: sample.timestamp, balance: sample.balance, resolution: 'daily' });
+      if (!prior || time > Date.parse(prior.timestamp)) daily.set(bucket, sampleForResolution(sample, 'daily'));
     }
   }
   return [...raw.values(), ...hourly.values(), ...daily.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
@@ -71,7 +104,7 @@ export function filterHistory(samples, range, now) {
   return samples.filter(sample => isValidSample(sample)
     && Date.parse(sample.timestamp) >= cutoff
     && Date.parse(sample.timestamp) <= now)
-    .map(({ timestamp, balance, resolution }) => ({ timestamp, balance, resolution }));
+    .map(sample => sampleForResolution(sample, sample.resolution));
 }
 
 export function getLatestSample(samples) {

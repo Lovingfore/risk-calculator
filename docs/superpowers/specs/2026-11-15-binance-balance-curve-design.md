@@ -2,11 +2,12 @@
 
 ## Goal
 
-Extend the public GitHub Pages risk calculator with a private-to-the-key-holder history view for the Binance USDⓈ-M USDT wallet balance. The collector and encrypted history use GitHub services only, with no paid service or automatic upgrade. The balance is decrypted in the browser and shown below the existing position calculator.
+Extend the public GitHub Pages risk calculator with a private-to-the-key-holder history view for Binance USDⓈ-M account equity, including unrealized position profit and loss. The collector and encrypted history use GitHub services only, with no paid service or automatic upgrade. The equity is decrypted in the browser and shown below the existing position calculator.
 
 ## Scope
 
-- Track the USDⓈ-M Futures USDT wallet `balance` field from Binance `GET /fapi/v3/balance`.
+- Track USDⓈ-M Futures account equity computed as `totalWalletBalance + totalUnrealizedProfit` from Binance `GET /fapi/v3/account`.
+- Mark equity samples explicitly and keep legacy wallet-only samples out of the equity chart, summary, and target progress; do not infer historic unrealized PnL.
 - Do not track Spot, unrealized profit/loss, total margin balance, orders, or positions.
 - Keep the current calculator and its fee-aware 80x sizing behavior unchanged.
 - Add a historical line chart with ranges of 1 hour, 24 hours, 7 days, 30 days, 180 days, 1 year, 3 years, and 5 years.
@@ -41,8 +42,8 @@ The GitHub-hosted standard runner is currently free for public repositories. Git
 
 - Add a balance section below the existing calculator.
 - Require a history password before decrypting or displaying any balance values.
-- Show the most recent wallet balance, its change from the previous sample, and the sample timestamp.
-- Provide the eight approved time ranges as a compact segmented control. Plot actual sampled values without interpolation; identify hourly and daily resolutions for long ranges. Use a responsive canvas chart with time and USDT axes and a point tooltip.
+- Show the most recent account equity, its change from the previous equity sample, and the sample timestamp.
+- Provide the seven approved time ranges as a compact segmented control. Plot actual sampled values without interpolation; identify hourly and daily resolutions for long ranges. Use a responsive canvas chart with time and USDT axes and a point tooltip.
 - Keep the entered password in page memory only. Reloading requires entering it again.
 - Poll the encrypted latest-sample file every 30 seconds while the page is open. A new point normally arrives every five minutes.
 - Mark the latest value as delayed when its timestamp is older than 15 minutes. Never synthesize a balance for a missing sample.
@@ -51,7 +52,7 @@ The GitHub-hosted standard runner is currently free for public repositories. Git
 ## Testing and Deployment
 
 - Unit-test the existing position calculator without changing its behavior.
-- Test Binance response parsing with fixtures, including selecting USDT and rejecting missing or malformed values.
+- Test Binance account response parsing with fixtures, including wallet balance plus signed unrealized profit and malformed values.
 - Test AES-GCM encrypt/decrypt compatibility between Node.js and Web Crypto, incorrect passwords, and tampered records.
 - Test UTC hourly/daily rollups, the 30-day/365-day/1,825-day retention boundaries, and range filtering with hand-derived samples.
 - Keep the collector's Actions Secrets out of pull-request test jobs. The schedule/collector job runs only from the default branch; the history update receives only repository `contents: write` permission needed to update its data branch.
@@ -60,6 +61,6 @@ The GitHub-hosted standard runner is currently free for public repositories. Git
 
 ## External References
 
-- Binance USDⓈ-M Futures balance endpoint: <https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api/Futures-Account-Balance-V3>
+- Binance USDⓈ-M Futures account endpoint: <https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api/Account-Information-V3>
 - GitHub scheduled workflow limits and behavior: <https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule>
 - GitHub Actions billing for public-repository standard runners: <https://docs.github.com/en/billing/concepts/product-billing/github-actions>

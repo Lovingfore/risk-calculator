@@ -1,5 +1,5 @@
 import { deriveHistoryKey, decryptSample } from './history-crypto.js';
-import { DEFAULT_HISTORY_RANGE, filterHistory, getLatestSample } from './balance-history.js';
+import { DEFAULT_HISTORY_RANGE, filterAccountEquity, filterHistory, getLatestSample } from './balance-history.js';
 import { drawBalanceChart } from './balance-chart.js';
 import {
   createBalanceTargets,
@@ -47,14 +47,16 @@ function setStatus(message, kind = '') {
 
 function draw() {
   if (!canvas) return;
-  chartState = drawBalanceChart(filterHistory(samples, range, Date.now()), range, canvas.getContext('2d'), {
-    hasHistory: samples.length > 0,
+  const equitySamples = filterAccountEquity(samples);
+  chartState = drawBalanceChart(filterHistory(equitySamples, range, Date.now()), range, canvas.getContext('2d'), {
+    hasHistory: equitySamples.length > 0,
+    emptyMessage: samples.length > 0 && equitySamples.length === 0 ? '等待首次账户权益采样' : undefined,
   });
   tooltip.hidden = true;
 }
 
 function updateSummary() {
-  const { current, delta } = getLatestSample(samples);
+  const { current, delta } = getLatestSample(filterAccountEquity(samples));
   summary.hidden = !current;
   if (!current) return;
   document.querySelector('#balance-value').textContent = fmt.format(current.balance);
@@ -78,7 +80,7 @@ function clearTargets() {
 
 function renderTargets() {
   if (!targetsPanel || !targetRows) return;
-  const { current } = getLatestSample(samples);
+  const { current } = getLatestSample(filterAccountEquity(samples));
   if (!current) {
     clearTargets();
     return;
@@ -111,7 +113,7 @@ function checkStale() {
   if (!latestTimestamp) return;
   const age = Date.now() - Date.parse(latestTimestamp);
   if (age > STALE_MS) setStatus('最新采样已超过 15 分钟，数据可能已过期。', 'warning');
-  else setStatus(`余额历史已解锁 · 最近更新 ${Math.max(0, Math.floor(age / 60_000))} 分钟前`);
+  else setStatus(`权益历史已解锁 · 最近更新 ${Math.max(0, Math.floor(age / 60_000))} 分钟前`);
 }
 
 async function readJson(url, cacheBust = false) {
@@ -142,8 +144,8 @@ async function loadHistory(derivedKey) {
   let latest;
   try { latest = await decryptSample(latestRecord, derivedKey); }
   catch { throw new Error('密码不正确或最新记录已损坏。'); }
-  const merged = new Map(records.map(sample => [sample.timestamp, sample]));
-  merged.set(latest.timestamp, latest);
+  const merged = new Map(records.map(sample => [`${sample.balanceType ?? 'wallet'}:${sample.timestamp}`, sample]));
+  merged.set(`${latest.balanceType ?? 'wallet'}:${latest.timestamp}`, latest);
   return { configured: true, samples: [...merged.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)) };
 }
 
@@ -155,12 +157,18 @@ async function refreshLatest() {
       if (latestTimestamp && Date.now() - Date.parse(latestTimestamp) > STALE_MS) {
         setStatus('最新采样已超过 15 分钟，数据可能已过期。', 'warning');
       } else {
-        setStatus('最新余额暂时不可用，将在下一轮重试。', 'error');
+        setStatus('最新权益暂时不可用，将在下一轮重试。', 'error');
       }
       return;
     }
     const latest = await decryptSample(record, key);
-    const index = samples.findIndex(sample => sample.timestamp === latest.timestamp);
+    if (latest.balanceType !== 'equity') {
+      if (!getLatestSample(filterAccountEquity(samples)).current) {
+        setStatus('等待首次账户权益采样；历史钱包余额未混入曲线。', 'warning');
+      }
+      return;
+    }
+    const index = samples.findIndex(sample => sample.balanceType === 'equity' && sample.timestamp === latest.timestamp);
     if (index < 0) samples.push(latest); else samples[index] = latest;
     samples.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
     updateSummary(); renderTargets(); draw();
@@ -168,7 +176,7 @@ async function refreshLatest() {
     if (latestTimestamp && Date.now() - Date.parse(latestTimestamp) > STALE_MS) {
       setStatus('最新采样已超过 15 分钟，数据可能已过期。', 'warning');
     } else {
-      setStatus('最新余额刷新失败，将在下一轮重试。', 'error');
+      setStatus('最新权益刷新失败，将在下一轮重试。', 'error');
     }
   }
 }
@@ -204,11 +212,12 @@ form?.addEventListener('submit', async event => {
       return;
     }
     key = derivedKey; samples = result.samples;
-    const { current } = getLatestSample(samples);
+    const { current } = getLatestSample(filterAccountEquity(samples));
     if (current) targetPage = getTargetPageForBalance(current.balance);
     updateSummary(); renderTargets(); draw();
     pollTimer = window.setInterval(refreshLatest, POLL_MS);
-    checkStale();
+    if (current) checkStale();
+    else setStatus('等待首次账户权益采样；历史钱包余额未混入曲线。', 'warning');
   } catch (error) {
     key = null; samples = []; summary.hidden = true; draw();
     clearTargets();

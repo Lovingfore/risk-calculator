@@ -1,6 +1,14 @@
-name: Collect Binance wallet balance
+name: Collect Binance account equity
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-balance.yml'
+      - 'scripts/collect-balance.js'
+      - 'scripts/collect-balance-loop.sh'
+      - 'src/balance-history.js'
+      - 'src/history-crypto.js'
   schedule:
     - cron: '3,8,13,18,23,28,33,38,43,48,53,58 * * * *'
   workflow_dispatch:
@@ -26,7 +34,7 @@ concurrency:
 
 jobs:
   collect:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -104,7 +112,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/src/balance-history.js" "$collector_dir/src/"
           cp "$GITHUB_WORKSPACE/src/history-crypto.js" "$collector_dir/src/"
 
-      - name: Collect and publish USDT wallet balance every five minutes
+      - name: Collect and publish account equity every five minutes
         if: steps.secrets-check.outputs.ready == 'true'
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
