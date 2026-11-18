@@ -454,10 +454,10 @@ button:focus-visible { outline: 3px solid rgb(24 115 76 / 24%); outline-offset: 
 .targets-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .targets-heading h3 { margin: 0; font-size: 15px; font-weight: 650; }
 .targets-progress { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.target-table-viewport { max-height: 336px; overflow: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.target-table-viewport { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .target-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; font-size: 11px; font-variant-numeric: tabular-nums; }
 .target-table th, .target-table td { padding: 8px 7px; text-align: right; white-space: nowrap; }
-.target-table th { position: sticky; top: 0; z-index: 1; background: #f5f7f5; color: var(--muted); font-size: 10px; font-weight: 600; }
+.target-table th { background: #f5f7f5; color: var(--muted); font-size: 10px; font-weight: 600; }
 .target-table th:first-child, .target-table td:first-child { width: 15%; text-align: center; }
 .target-table th:nth-child(2), .target-table td:nth-child(2) { width: 40%; }
 .target-table th:nth-child(3), .target-table td:nth-child(3) { width: 45%; }

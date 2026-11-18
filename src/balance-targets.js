@@ -1,7 +1,7 @@
 const STARTING_PRINCIPAL = 4000;
 const GROWTH_RATE = 1.01;
-const TARGET_COUNT = 625;
-export const TARGET_PAGE_SIZE = 30;
+const TARGET_COUNT = 630;
+export const TARGET_PAGE_SIZE = 10;
 
 export function createBalanceTargets() {
   const targets = [];
