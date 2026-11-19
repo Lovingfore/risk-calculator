@@ -33,6 +33,8 @@ node -e "console.log(require('node:crypto').randomBytes(36).toString('base64url'
 
 定时事件会自动启动连续采集；也可在 **Actions → Collect Binance wallet balance → Run workflow** 手动启动。手动运行默认只采集一次；勾选 `continue_loop` 可启动连续采集，`collection_cycles` 控制首批采样次数（最多 68 次）。连续模式需要长时间占用一个 GitHub-hosted Runner，并通过 `GITHUB_TOKEN` 的 Actions 写权限在批次之间接续。公开仓库的标准 Runner 当前适用 GitHub 的免费策略，但平台政策可能变化；GitHub 不保证永久免费、每次准点运行或数据永不丢失。没有配置 Secrets 或尚无成功采样时，页面会明确显示余额历史未配置，不会显示虚构余额。
 
+发布历史记录直接连接 GitHub，不经过 Binance 代理。每次推送最多尝试 3 次，失败后保留本批已采样数据并在后续周期重试；批次结束时再重试一次。若始终无法发布，工作流会保留 7 天的加密数据备份（Actions Artifacts）。连续模式的下一批由独立步骤启动，即使采集步骤失败仍会尝试接续，启动请求也有超时和重试。
+
 ## 本地测试
 
 需要 Node.js 20 或更高版本：

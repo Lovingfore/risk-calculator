@@ -113,6 +113,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/src/history-crypto.js" "$collector_dir/src/"
 
       - name: Collect and publish account equity every five minutes
+        id: collector
         if: steps.secrets-check.outputs.ready == 'true'
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
@@ -122,8 +123,40 @@ jobs:
           HTTPS_PROXY: http://127.0.0.1:7890
           HTTP_PROXY: http://127.0.0.1:7890
           NO_PROXY: 127.0.0.1,localhost
-          ACTIONS_DISPATCH_TOKEN: ${{ github.token }}
           HISTORY_BRANCH_EXISTS: ${{ steps.history-branch.outputs.exists }}
           CONTINUE_LOOP: ${{ inputs.continue_loop || false }}
           COLLECTION_CYCLES: ${{ inputs.collection_cycles || 68 }}
         run: bash "$RUNNER_TEMP/risk-calculator-collector/scripts/collect-balance-loop.sh"
+
+      - name: Preserve encrypted samples if publishing failed
+        if: failure() && steps.collector.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-balance-backup-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/risk-calculator-balance/history.jsonl
+            ${{ runner.temp }}/risk-calculator-balance/latest.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Queue next collector batch even if collection failed
+        if: always() && !cancelled() && steps.secrets-check.outputs.ready == 'true' && (github.event_name == 'schedule' || inputs.continue_loop == true)
+        timeout-minutes: 5
+        env:
+          ACTIONS_DISPATCH_TOKEN: ${{ github.token }}
+          COLLECTOR_OUTCOME: ${{ steps.collector.outcome }}
+        shell: bash
+        run: |
+          # Avoid a rapid restart loop if the collector failed during startup.
+          if [[ "$COLLECTOR_OUTCOME" != "success" ]]; then sleep 60; fi
+          curl --fail --silent --show-error --noproxy '*' -o /dev/null \
+            --connect-timeout 15 --max-time 30 \
+            --retry 3 --retry-all-errors --retry-delay 5 \
+            -X POST \
+            -H "Authorization: Bearer ${ACTIONS_DISPATCH_TOKEN:?}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL:?}/repos/${GITHUB_REPOSITORY:?}/actions/workflows/collect-balance.yml/dispatches" \
+            -d '{"ref":"main","inputs":{"continue_loop":"true","collection_cycles":"68"}}'
+          echo "Next collector batch queued."
